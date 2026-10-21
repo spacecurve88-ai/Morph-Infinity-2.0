@@ -22,6 +22,7 @@ import {
   Repository,
 } from "../storage/repository";
 import { Dialog } from "./Dialog";
+import { ArrowIcon } from "./ArrowIcon";
 import { FieldForm, NameForm, RecordForm } from "./forms";
 import { Diff, MonthlyChart, PlanSamples } from "./previews";
 import { compareSnapshots, recordTitle, valueText } from "./presentation";
@@ -415,7 +416,7 @@ export function App() {
         )}
         <div className="sidebar-bottom">
           <button className="nav-button" onClick={() => openModal("backup")}>
-            ↗ Backups & recovery
+            <ArrowIcon /> Backups & recovery
           </button>
           <button
             className="nav-button"
@@ -547,7 +548,7 @@ export function App() {
                 }
               />
               <button disabled={!w || busy || !request.trim()} type="submit">
-                Preview change <span aria-hidden="true">↗</span>
+                Preview change <ArrowIcon />
               </button>
             </form>
             <p>
@@ -648,7 +649,7 @@ export function App() {
                       {kind === "blank"
                         ? "Create collection"
                         : "Preview template"}{" "}
-                      ↗
+                      <ArrowIcon />
                     </span>
                   </button>
                 ))}
@@ -759,15 +760,17 @@ export function App() {
                         {c.fields.map((f) => (
                           <th key={f.id} scope="col">
                             <span className="field-kind">
-                              {f.type === "computed"
-                                ? "ƒ"
-                                : f.type === "number"
-                                  ? "#"
-                                  : f.type === "date"
-                                    ? "◷"
-                                    : f.type === "relation"
-                                      ? "↗"
-                                      : "Aa"}
+                              {f.type === "computed" ? (
+                                "ƒ"
+                              ) : f.type === "number" ? (
+                                "#"
+                              ) : f.type === "date" ? (
+                                "◷"
+                              ) : f.type === "relation" ? (
+                                <ArrowIcon size={12} />
+                              ) : (
+                                "Aa"
+                              )}
                             </span>{" "}
                             {f.name}
                           </th>
@@ -815,7 +818,7 @@ export function App() {
                                 openModal("record");
                               }}
                             >
-                              ↗
+                              <ArrowIcon />
                             </button>
                           </td>
                         </tr>
@@ -853,7 +856,9 @@ export function App() {
                             );
                           })}
                       </dl>
-                      <span className="template-cta">Edit record ↗</span>
+                      <span className="template-cta">
+                        Edit record <ArrowIcon />
+                      </span>
                     </button>
                   ))}
                 </div>

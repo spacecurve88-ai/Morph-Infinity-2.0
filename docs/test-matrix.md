@@ -4,9 +4,12 @@ Validated in this cloud machine with Node 24.19.0, npm 11.9.0 and system Chromiu
 
 | Check | Outcome | Evidence |
 | --- | --- | --- |
+| `npm ci --cache /workspace/.cache/npm` | Passed | Fresh dependency installation from the committed lockfile; followed by build and unit tests |
 | `npm run build` | Passed | Strict TypeScript compilation, Vite production bundle and PWA asset precache generation |
 | `npm test` | 34 passed, 0 skipped | 21 core cases and 13 storage cases across two files; parameterized cases count individually |
 | `npm run test:e2e -- --project=chromium` | 14 passed, 0 skipped | Production app, two workers, fresh isolated contexts |
+| Development server | Passed | HTTP 200 and actual React first-load screen verified in isolated Chromium context |
+| `npm run format:check` | Passed | Source, tests and configuration match Prettier formatting |
 | `npm audit --omit=dev` | Passed | No production dependency advisories reported by registry |
 | WebKit browser installation | Blocked | HTTP 403 `Domain forbidden` from `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`; no WebKit tests ran |
 | Physical iPad / Safari / WebGPU | Unrun | Device unavailable; no compatibility or model-performance claim |

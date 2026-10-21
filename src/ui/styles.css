@@ -1442,3 +1442,66 @@ pre {
 .main-shell {
   min-width: 0;
 }
+/* Readable secondary text and native-sized form controls on touch devices. */
+.help,
+.composer > p,
+.page-heading p,
+.template-card p,
+.welcome > p,
+.empty-detail,
+.cell-reason,
+.page-footer,
+.canvas-footer,
+.history-list small,
+.sample-preview p {
+  color: #64705a;
+}
+.quiet-tag,
+.eyebrow,
+.version-tag,
+.record-count,
+.section-title > span,
+.welcome-foot,
+.sort-label,
+.sidebar-hint,
+.nav-heading,
+.workspace-picker label,
+.saved-state {
+  color: #66725c;
+}
+input::placeholder {
+  color: #6d7664;
+}
+.template-cta svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 3px;
+}
+td {
+  font-size: 13px;
+}
+th {
+  font-size: 11px;
+}
+@media (pointer: coarse) {
+  button,
+  input,
+  select {
+    min-height: 44px !important;
+  }
+  input,
+  select {
+    font-size: 16px;
+  }
+}
+@media (max-width: 800px) {
+  .stack-form input,
+  .stack-form select,
+  .composer input {
+    font-size: 16px;
+  }
+  .help,
+  .page-heading p {
+    font-size: 13px;
+  }
+}
