@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/Morph-Infinity-2.0/sw.js', { scope: '/Morph-Infinity-2.0/' })})}

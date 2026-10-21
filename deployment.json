@@ -1,0 +1,7 @@
+{
+  "app": "Morph Infinity 2.0",
+  "sourceCommit": "0e3ef03030c66627428f41e87eeee119da424f08",
+  "buildCommand": "npm run build -- --base=/Morph-Infinity-2.0/",
+  "hosting": "GitHub Pages",
+  "basePath": "/Morph-Infinity-2.0/"
+}
