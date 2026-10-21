@@ -5,6 +5,8 @@ import {
   currentSnapshot,
   fieldSchema,
   key,
+  recordSchema,
+  snapshotSchema,
   uid,
 } from "./model";
 import type {
@@ -16,8 +18,30 @@ import type {
   Workspace,
 } from "./model";
 import { validateDocument, validateSnapshot } from "./validation";
+import { automationRuleSchema } from "./contracts";
+import { previewRecordRules, previewSimulation } from "./automation";
+import type { Change, SimulationResult } from "./automation";
 
 const opSchema = z.discriminatedUnion("type", [
+  z
+    .object({ type: z.literal("upsertRule"), rule: automationRuleSchema })
+    .strict(),
+  z.object({ type: z.literal("removeRule"), ruleId: key }).strict(),
+  z
+    .object({
+      type: z.literal("simulate"),
+      steps: z.number().int().min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("saveRecord"),
+      collectionId: key,
+      record: recordSchema,
+      date: z.iso.date(),
+    })
+    .strict(),
+  z.object({ type: z.literal("addBundle"), snapshot: snapshotSchema }).strict(),
   z
     .object({ type: z.literal("addCollection"), collection: collectionSchema })
     .strict(),
@@ -61,10 +85,18 @@ export function workspace(document: Document, id: string): Workspace {
   if (!w) throw new Error("Workspace not found.");
   return w;
 }
-export function previewPlan(document: Document, input: unknown): Snapshot {
+export type PlanPreview = {
+  snapshot: Snapshot;
+  changes: Change[];
+  simulation?: SimulationResult;
+};
+export function previewPlanDetails(
+  document: Document,
+  input: unknown,
+): PlanPreview {
   boundedInput(input);
-  const plan = planSchema.parse(input);
-  const w = workspace(document, plan.workspaceId);
+  const plan = planSchema.parse(input),
+    w = workspace(document, plan.workspaceId);
   if (
     plan.baseRevision !== document.revision ||
     plan.branchId !== w.activeBranchId
@@ -72,9 +104,54 @@ export function previewPlan(document: Document, input: unknown): Snapshot {
     throw new Error(
       "This plan is stale. Preview it again against the current revision.",
     );
-  const next = structuredClone(currentSnapshot(w));
+  if (
+    plan.operations.length !== 1 &&
+    plan.operations.some(
+      (o) => o.type === "simulate" || o.type === "saveRecord",
+    )
+  )
+    throw new Error(
+      "Simulation and record-change plans must each contain exactly one operation.",
+    );
+  let next = structuredClone(currentSnapshot(w));
+  let changes: Change[] = [],
+    simulation: SimulationResult | undefined;
   for (const op of plan.operations) {
-    if (op.type === "addCollection") {
+    if (op.type === "simulate") {
+      simulation = previewSimulation(
+        next,
+        next.automation ?? { version: 1, rules: [] },
+        op.steps,
+      );
+      next = simulation.snapshot;
+      changes = simulation.changes;
+    } else if (op.type === "saveRecord") {
+      const result = previewRecordChange(
+        next,
+        op.collectionId,
+        op.record,
+        op.date,
+      );
+      next = result.snapshot;
+      changes = result.changes;
+    } else if (op.type === "upsertRule") {
+      next.automation ??= { version: 1, rules: [] };
+      const index = next.automation.rules.findIndex((r) => r.id === op.rule.id);
+      if (index < 0) next.automation.rules.push(op.rule);
+      else next.automation.rules[index] = op.rule;
+    } else if (op.type === "removeRule") {
+      if (!next.automation?.rules.some((r) => r.id === op.ruleId))
+        throw new Error("Rule not found.");
+      next.automation.rules = next.automation.rules.filter(
+        (r) => r.id !== op.ruleId,
+      );
+    } else if (op.type === "addBundle") {
+      next.collections.push(...op.snapshot.collections);
+      if (op.snapshot.automation) {
+        next.automation ??= { version: 1, rules: [] };
+        next.automation.rules.push(...op.snapshot.automation.rules);
+      }
+    } else if (op.type === "addCollection") {
       if (op.collection.records.length || op.collection.rules.length)
         throw new Error("New collections must start empty.");
       next.collections.push(op.collection);
@@ -93,7 +170,41 @@ export function previewPlan(document: Document, input: unknown): Snapshot {
       }
     }
   }
-  return validateSnapshot(next);
+  return { snapshot: validateSnapshot(next), changes, simulation };
+}
+export function previewPlan(document: Document, input: unknown): Snapshot {
+  return previewPlanDetails(document, input).snapshot;
+}
+/** User values and legacy managed dates are frozen before the single event-rule pass. */
+export function previewRecordChange(
+  input: Snapshot,
+  collectionId: string,
+  record: DataRecord,
+  date: string,
+): { snapshot: Snapshot; changes: Change[] } {
+  const snapshot = validateSnapshot(input),
+    c = snapshot.collections.find((c) => c.id === collectionId);
+  if (!c) throw new Error("Collection not found.");
+  const index = c.records.findIndex((r) => r.id === record.id),
+    previous = c.records[index],
+    updated = recordSchema.parse(record);
+  for (const rule of c.rules) {
+    updated.values[rule.setFieldId] =
+      previous?.values[rule.setFieldId] != null
+        ? previous.values[rule.setFieldId]
+        : updated.values[rule.triggerFieldId] === rule.equals &&
+            previous?.values[rule.triggerFieldId] !== rule.equals
+          ? date
+          : null;
+  }
+  if (index < 0) c.records.push(updated);
+  else c.records[index] = updated;
+  return previewRecordRules(
+    validateSnapshot(snapshot),
+    collectionId,
+    record.id,
+    previous,
+  );
 }
 export function commitSnapshot(
   w: Workspace,
@@ -116,7 +227,9 @@ export function commitSnapshot(
   branch.head = id;
 }
 export function applyPlan(document: Document, plan: FeaturePlan): Document {
-  const snapshot = previewPlan(document, plan);
+  const { snapshot, simulation } = previewPlanDetails(document, plan);
+  if (simulation && !simulation.changes.length)
+    throw new Error("The simulation produced no data changes to apply.");
   const next = structuredClone(document);
   commitSnapshot(workspace(next, plan.workspaceId), snapshot, plan.summary);
   return next;
@@ -180,29 +293,15 @@ export function saveRecord(
 ): Document {
   const next = structuredClone(document),
     w = workspace(next, workspaceId),
-    snapshot = structuredClone(currentSnapshot(w));
+    snapshot = currentSnapshot(w);
   const c = snapshot.collections.find((c) => c.id === collectionId);
   if (!c) throw new Error("Collection not found.");
-  const index = c.records.findIndex((r) => r.id === record.id),
-    previous = c.records[index];
-  const updated = structuredClone(record);
-  for (const rule of c.rules) {
-    if (previous?.values[rule.setFieldId] != null)
-      updated.values[rule.setFieldId] = previous.values[rule.setFieldId];
-    else {
-      updated.values[rule.setFieldId] =
-        updated.values[rule.triggerFieldId] === rule.equals &&
-        previous?.values[rule.triggerFieldId] !== rule.equals
-          ? date
-          : null;
-    }
-  }
-  if (index < 0) c.records.push(updated);
-  else c.records[index] = updated;
+  const existing = c.records.some((r) => r.id === record.id);
+  const result = previewRecordChange(snapshot, collectionId, record, date);
   commitSnapshot(
     w,
-    snapshot,
-    index < 0 ? `Added record to ${c.name}` : `Updated record in ${c.name}`,
+    result.snapshot,
+    existing ? `Updated record in ${c.name}` : `Added record to ${c.name}`,
   );
   return next;
 }
