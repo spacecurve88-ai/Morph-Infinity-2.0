@@ -186,6 +186,8 @@ export function RecordForm({
   busy,
   onSubmit,
   onDelete,
+  fieldIds,
+  submitLabel = "Save record",
 }: {
   collection: Collection;
   snapshot: Snapshot;
@@ -193,6 +195,8 @@ export function RecordForm({
   busy: boolean;
   onSubmit: (r: DataRecord) => void;
   onDelete?: () => void;
+  fieldIds?: string[];
+  submitLabel?: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(
@@ -209,6 +213,8 @@ export function RecordForm({
       c.fields
         .filter((f) => f.type !== "computed")
         .map((f) => {
+          if (fieldIds && !fieldIds.includes(f.id))
+            return [f.id, record?.values[f.id] ?? null];
           const v = values[f.id] ?? "";
           return [
             f.id,
@@ -227,7 +233,10 @@ export function RecordForm({
   return (
     <form className="stack-form" onSubmit={save}>
       {c.fields
-        .filter((f) => f.type !== "computed")
+        .filter(
+          (f) =>
+            f.type !== "computed" && (!fieldIds || fieldIds.includes(f.id)),
+        )
         .map((f, index) => {
           const managed = c.rules.some((r) => r.setFieldId === f.id);
           return (
@@ -311,7 +320,7 @@ export function RecordForm({
             Delete record
           </button>
         )}
-        <button disabled={busy}>Save record</button>
+        <button disabled={busy}>{submitLabel}</button>
       </div>
     </form>
   );

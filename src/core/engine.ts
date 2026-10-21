@@ -23,6 +23,7 @@ import { previewRecordRules, previewSimulation } from "./automation";
 import type { Change, SimulationResult } from "./automation";
 
 const opSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("executeRule"), ruleId: key }).strict(),
   z
     .object({ type: z.literal("upsertRule"), rule: automationRuleSchema })
     .strict(),
@@ -109,7 +110,10 @@ export function previewPlanDetails(
   if (
     plan.operations.length !== 1 &&
     plan.operations.some(
-      (o) => o.type === "simulate" || o.type === "saveRecord",
+      (o) =>
+        o.type === "simulate" ||
+        o.type === "saveRecord" ||
+        o.type === "executeRule",
     )
   )
     throw new Error(
@@ -119,7 +123,16 @@ export function previewPlanDetails(
   let changes: Change[] = [],
     simulation: SimulationResult | undefined;
   for (const op of plan.operations) {
-    if (op.type === "simulate") {
+    if (op.type === "executeRule") {
+      const rule = next.automation?.rules.find((r) => r.id === op.ruleId);
+      if (!rule || !rule.enabled || rule.trigger.kind !== "simulationStep")
+        throw new Error(
+          "Only an enabled simulation-step rule can be explicitly executed.",
+        );
+      simulation = previewSimulation(next, { version: 1, rules: [rule] }, 1);
+      next = simulation.snapshot;
+      changes = simulation.changes;
+    } else if (op.type === "simulate") {
       simulation = previewSimulation(
         next,
         next.automation ?? { version: 1, rules: [] },
