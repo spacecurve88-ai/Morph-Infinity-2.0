@@ -204,3 +204,15 @@ describe("approved plans, storage and rollback", () => {
     expect(head(edited).collections[0].records[0].values.employees).toBe(6);
   });
 });
+
+it("restores valid maximum-length historical messages without breaking backup compatibility", () => {
+  const d = setup(),
+    w = d.workspaces[0],
+    target = w.commits.at(-1)!;
+  target.message = "x".repeat(200);
+  const restored = restoreCommit(d, w.id, target.id, "full");
+  expect(
+    restored.workspaces[0].commits.at(-1)!.message.length,
+  ).toBeLessThanOrEqual(200);
+  expect(parseBackup(exportBackup(restored))).toEqual(restored);
+});

@@ -245,7 +245,7 @@ export function commitSnapshot(
     id,
     parentId: branch.head,
     at: new Date().toISOString(),
-    message,
+    message: message.slice(0, 200),
     snapshot: validateSnapshot(snapshot),
   });
   branch.head = id;

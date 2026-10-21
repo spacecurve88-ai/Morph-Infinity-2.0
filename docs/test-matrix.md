@@ -1,6 +1,6 @@
 # Deterministic simulation acceptance matrix
 
-The current suites retain the original 34 unit tests and 14 browser scenarios. The simulation increment adds 64 unit cases and 9 browser scenarios (the economic case has three explicit touch widths). No tests are skipped or disabled. Physical-device claims remain separate from automation.
+The current suites retain the original 34 unit tests and 14 browser scenarios. The simulation increment adds 65 unit cases and 9 browser scenarios (the economic case has three explicit touch widths). No tests are skipped or disabled. Physical-device claims remain separate from automation.
 
 ## Reproducible gate commands
 
@@ -21,14 +21,14 @@ The cloud workspace's applied network policy blocks WebKit downloads, so the ful
 | `tests/storage.test.ts` | 13 | All pass |
 | `tests/rule-schema.test.ts` | 21 | All pass |
 | `tests/automation.test.ts` | 24 | All pass |
-| `tests/simulation-plans.test.ts` | 10 | All pass |
+| `tests/simulation-plans.test.ts` | 11 | All pass |
 | `tests/simulation-boundaries.test.ts` | 9 | All pass |
-| Unit total | **98** | 98 passed, 0 failed, 0 skipped |
+| Unit total | **99** | 99 passed, 0 failed, 0 skipped |
 | Chromium E2E | **23** | 23 passed, 0 failed, 0 skipped |
 | WebKit E2E | **23** | 23 passed, 0 failed, 0 skipped |
 | Full browser total | **46** | 46 passed, 0 failed, 0 skipped |
 
-Local verification completed with 98 unit passes and 23 Chromium passes on Node 24.19.0/npm 11.9.0, plus build and formatting success. The earlier M4 two-engine CI gate also completed successfully with 89 unit cases and 44 browser cases before the additional release-boundary/pagination checks. Final merge requires the complete current counts above on the current implementation. Actual CI runs and artifacts establish the final result; a configured case count alone does not.
+Local verification completed with 99 unit passes and 23 Chromium passes on Node 24.19.0/npm 11.9.0, plus build and formatting success. The earlier M4 two-engine CI gate also completed successfully with 89 unit cases and 44 browser cases before the additional release-boundary/pagination checks. Final merge requires the complete current counts above on the current implementation. Actual CI runs and artifacts establish the final result; a configured case count alone does not.
 
 ## Domain and storage evidence
 
