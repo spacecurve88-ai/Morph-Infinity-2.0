@@ -5,6 +5,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: simulation-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -22,7 +25,7 @@ jobs:
       - run: npm run build
       - run: npm run format:check
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --max-failures=1
       - name: Record exact acceptance counts
         if: always()
         run: |
@@ -37,6 +40,15 @@ jobs:
             d=json.loads(path.read_text())
             counts={'passed':d.get('numPassedTests'),'failed':d.get('numFailedTests'),'skipped':d.get('numPendingTests')} if name=='unit' else d.get('stats',{})
             lines.append(name+': '+json.dumps(counts,sort_keys=True))
+            if name=='e2e':
+              def inspect(suite):
+                for spec in suite.get('specs',[]):
+                  for test in spec.get('tests',[]):
+                    for result in test.get('results',[]):
+                      if result.get('status') in ['failed','timedOut']:
+                        lines.extend(['',spec.get('title',''), '```', str(result.get('error',{}).get('message',''))[:6000], '```'])
+                for child in suite.get('suites',[]): inspect(child)
+              for suite in d.get('suites',[]): inspect(suite)
           pathlib.Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(lines)+'\n')
           PY
       - uses: actions/upload-artifact@v4

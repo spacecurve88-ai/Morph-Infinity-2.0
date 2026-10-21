@@ -22,6 +22,7 @@ import {
 } from "../storage/repository";
 import { Dialog } from "./Dialog";
 import { ArrowIcon } from "./ArrowIcon";
+import { UpdateNotice } from "./UpdateNotice";
 import { SimulationWorkbench, AutomationPreview } from "./SimulationWorkbench";
 import { planTask, usePlanPreview } from "./plan-preview";
 import { FieldForm, NameForm, RecordForm } from "./forms";
@@ -345,7 +346,14 @@ export function App() {
     setError("");
     try {
       const next = await planTask<Document>(doc, plan, "apply").promise;
-      await persist(next, "Approved change saved locally.");
+      const saved = await persist(next, "Approved change saved locally.");
+      const bundle = plan.operations.find((o) => o.type === "addBundle");
+      if (
+        saved &&
+        bundle?.type === "addBundle" &&
+        bundle.snapshot.collections[0]
+      )
+        setCollectionId(bundle.snapshot.collections[0].id);
     } catch (e) {
       setError(explain(e));
     } finally {
@@ -512,6 +520,7 @@ export function App() {
             </div>
             <span className="version-tag">EARLY BUILD · 0.1</span>
           </div>
+          <UpdateNotice blocked={!!modal || !!plan || busy || applying} />
           <ErrorBox error={modal || plan ? "" : error} />
           {stale && (
             <div role="status" className="warning">

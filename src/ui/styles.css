@@ -1793,3 +1793,13 @@ th {
   margin-bottom: 0;
   z-index: 2;
 }
+@media (max-width: 800px) {
+  .sidebar {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .sidebar.is-open {
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
