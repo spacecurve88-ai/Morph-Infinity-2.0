@@ -1,6 +1,7 @@
 import { boundedInput, documentSchema, snapshotSchema, unique } from "./model";
 import type { Document, Snapshot } from "./model";
 import { validateFormula } from "./formula";
+import { validateRuleset } from "./rule-validation";
 
 export function validateSnapshot(input: unknown): Snapshot {
   boundedInput(input);
@@ -16,7 +17,15 @@ export function validateSnapshot(input: unknown): Snapshot {
     )
       throw new Error("Field names must be unique.");
     for (const f of c.fields) {
-      if (f.type === "computed") validateFormula(f.formula, c, new Set([f.id]));
+      if (f.type === "computed")
+        validateFormula(
+          f.formula,
+          c,
+          new Set([`${c.id}/${f.id}`]),
+          0,
+          { nodes: 0 },
+          snapshot,
+        );
       if (
         f.type === "relation" &&
         !snapshot.collections.some((t) => t.id === f.targetCollectionId)
@@ -66,6 +75,7 @@ export function validateSnapshot(input: unknown): Snapshot {
           );
       }
   }
+  if (snapshot.automation) validateRuleset(snapshot, snapshot.automation);
   return snapshot;
 }
 export function validateDocument(input: unknown): Document {

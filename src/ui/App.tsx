@@ -311,11 +311,11 @@ export function App() {
     records.sort((a, b) => {
       const rawA =
         sortField.type === "computed"
-          ? evaluate(sortField.formula, c, a).value
+          ? evaluate(sortField.formula, c, a, 0, snapshot).value
           : a.values[sortField.id];
       const rawB =
         sortField.type === "computed"
-          ? evaluate(sortField.formula, c, b).value
+          ? evaluate(sortField.formula, c, b, 0, snapshot).value
           : b.values[sortField.id];
       if (rawA == null) return rawB == null ? 0 : 1;
       if (rawB == null) return -1;

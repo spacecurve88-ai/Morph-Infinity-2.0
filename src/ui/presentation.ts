@@ -15,7 +15,7 @@ export function valueText(
   snapshot: Snapshot,
 ) {
   if (f.type === "computed") {
-    const result = evaluate(f.formula, c, r);
+    const result = evaluate(f.formula, c, r, 0, snapshot);
     return {
       text:
         result.value === null
