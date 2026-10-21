@@ -6,7 +6,7 @@ export default defineConfig({
   fullyParallel: true,
   workers: 2,
   retries: 0,
-  reporter: [["list"]],
+  reporter: [["list"], ["json", { outputFile: ".reports/e2e.json" }]],
   timeout: 30000,
   use: {
     baseURL: "http://127.0.0.1:4173",
@@ -31,7 +31,7 @@ export default defineConfig({
     },
     {
       name: "webkit",
-      use: { ...devices["iPad (gen 7)"], browserName: "webkit" },
+      use: { ...devices["Desktop Safari"], browserName: "webkit" },
     },
   ],
 });

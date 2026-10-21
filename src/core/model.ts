@@ -1,42 +1,23 @@
 import { z } from "zod";
 
-export const key = z
-  .string()
-  .min(1)
-  .max(80)
-  .regex(/^[a-zA-Z0-9_-]+$/)
-  .refine(
-    (v) => !["__proto__", "prototype", "constructor"].includes(v),
-    "Reserved identifier",
-  );
-const label = z.string().trim().min(1).max(100);
-export const unitSchema = z.enum(["number", "pages", "minutes", "money"]);
-export type Unit = z.infer<typeof unitSchema>;
-export type Formula =
-  | { kind: "field"; fieldId: string }
-  | { kind: "number"; value: number }
-  | {
-      kind: "binary";
-      op: "+" | "-" | "*" | "/";
-      left: Formula;
-      right: Formula;
-    };
-export const formulaSchema: z.ZodType<Formula> = z.lazy(() =>
-  z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("field"), fieldId: key }).strict(),
-    z
-      .object({ kind: z.literal("number"), value: z.number().finite() })
-      .strict(),
-    z
-      .object({
-        kind: z.literal("binary"),
-        op: z.enum(["+", "-", "*", "/"]),
-        left: formulaSchema,
-        right: formulaSchema,
-      })
-      .strict(),
-  ]),
-);
+import {
+  key,
+  label,
+  unitSchema,
+  formulaSchema,
+  automationSchema,
+} from "./contracts";
+export { key, unitSchema, formulaSchema } from "./contracts";
+export type {
+  Unit,
+  Formula,
+  Condition,
+  AutomationRule,
+  Ruleset,
+  Action,
+  Scalar,
+  AggregateFilter,
+} from "./contracts";
 export const fieldSchema = z.discriminatedUnion("type", [
   z.object({ id: key, name: label, type: z.literal("text") }).strict(),
   z
@@ -104,7 +85,10 @@ export const collectionSchema = z
   .strict();
 export type Collection = z.infer<typeof collectionSchema>;
 export const snapshotSchema = z
-  .object({ collections: z.array(collectionSchema).max(30) })
+  .object({
+    collections: z.array(collectionSchema).max(30),
+    automation: automationSchema.optional(),
+  })
   .strict();
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export const commitSchema = z
@@ -154,14 +138,25 @@ export function currentSnapshot(w: Workspace): Snapshot {
   return commit.snapshot;
 }
 export function boundedInput(input: unknown, maxDepth = 45): void {
-  let count = 0;
+  let count = 0,
+    characters = 0;
   const stack: [unknown, number][] = [[input, 0]];
   while (stack.length) {
     const [value, depth] = stack.pop()!;
     if (depth > maxDepth || ++count > 500000)
       throw new Error("Input is too large or deeply nested.");
+    if (
+      typeof value === "string" &&
+      (characters += value.length) > 8 * 1024 * 1024
+    )
+      throw new Error("Input payload is too large.");
     if (value && typeof value === "object") {
-      for (const [k, v] of Object.entries(value)) {
+      if (Array.isArray(value) && value.length > 500000)
+        throw new Error("Input array is too large.");
+      const entries = Object.entries(value);
+      if (entries.length + stack.length + count > 500000)
+        throw new Error("Input is too large.");
+      for (const [k, v] of entries) {
         if (["__proto__", "prototype", "constructor"].includes(k))
           throw new Error("Unsafe object key.");
         stack.push([v, depth + 1]);

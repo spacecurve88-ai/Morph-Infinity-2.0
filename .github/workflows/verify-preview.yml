@@ -24,6 +24,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
       - name: Test the deployed HTTPS site on mobile and tablet viewports
+        env:
+          MORPH_EXPECTED_SOURCE_SHA: ${{ github.sha }}
         run: node scripts/verify-deployment.mjs
       - name: Save screenshots and verification results
         if: always()

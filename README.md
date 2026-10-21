@@ -35,13 +35,21 @@ Browser tests use `/usr/bin/chromium` if available, otherwise Playwright's Chrom
 
 Requests outside the deterministic grammar explicitly fail without changing data. Reminders, external API calls, arbitrary code and AI are unsupported. This is an early working slice, not the complete roadmap.
 
+## Rules and deterministic simulations
+
+Open **Rules & simulations** to create/edit conditions and actions through forms, choose explicit record or simulation triggers, and enable/disable rules through preview and approval. Numeric expressions support arithmetic and sum/count across collections, including related-record filters. **+ Field → Computed expression** also exposes those calculations without a language model.
+
+Choose 1–100 steps and **Preview simulation**. Inspect affected records, ordered before/after changes and step summaries; cancel to preserve current data or approve a single recoverable branch-local revision. Record edits with enabled event rules also preview their side effects before approval. Rule writes never recurse or run on a background timer.
+
+**Preview economic example** adds separate Companies/Expenses collections and two ordinary rules. After five steps, Company A has cash −2 and state Bankrupt; Company B has cash 18. Frozen-step reads mean bankruptcy follows the zero crossing on the next step. This example is an integration fixture, not a forecast. See the [user guide](docs/simulation-guide.md) and [execution contract](docs/simulation-implementation.md).
+
 ## Data, recovery, and iPad use
 
 IndexedDB is the canonical store. Data is private to this browser profile and origin; it does **not** sync between devices. Export JSON regularly: browsers can clear or evict storage. Native backups contain all workspaces, branch heads, immutable design/data snapshots and record IDs. Imports are limited to 5 MB. Current limits include 200 commits per workspace; see [architecture](docs/architecture.md).
 
 Malformed stored data opens a recovery screen rather than a new empty workspace. Download the raw recovery copy, then choose a known-good native backup. That recovery route also retains damaged state locally. Quota and stale-tab failures keep the previous saved revision; close the editor and reload before retrying a stale edit.
 
-Production builds cache app assets for offline use after the first successful online load. Serve over HTTPS (localhost is accepted during development). On iPad Safari, open the production app once online, then use **Share → Add to Home Screen** if available. Actual iPad touch, storage eviction, installability and WebGPU are not verified; follow the [manual checklist](docs/test-matrix.md). No model download is enabled.
+Production builds cache app assets for offline use after the first successful online load. Serve over HTTPS (localhost is accepted during development). On iPad Safari, open the production app once online, then use **Share → Add to Home Screen** if available. The user reported the six original baseline iPad checks passed (creation, editing, calculation, reload, branch isolation and export). The new simulation UI, storage eviction, installability and WebGPU have not been physically verified; follow the [manual checklist](docs/test-matrix.md). No model download is enabled.
 
 **Legacy v8 imports are intentionally blocked pending real fixtures.** Keep the original deployment and its backups. A new origin cannot read the Hatchable origin's localStorage. See [migration evidence](docs/legacy-migration.md).
 

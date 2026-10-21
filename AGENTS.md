@@ -1,6 +1,6 @@
 # Morph Infinity development
 
-Read `Morph_Infinity_Codex_Master_Prompt.md` as primary product instructions and `Morph_Infinity_Codex_Build_Plan.md` as technical specification.
+Read `Morph_Infinity_Codex_Master_Prompt.md` as primary product instructions and `Morph_Infinity_Codex_Build_Plan.md` as technical specification. For the deterministic simulation increment, `docs/codex-simulation-handoff.md` is the authoritative specification.
 
 This is an independent successor. The repository initially contained only three Markdown files. No original v8 source or genuine legacy backup has been supplied. Never claim verified migration compatibility, access to another origin's storage, or iPad hardware validation.
 
@@ -22,3 +22,7 @@ Node 22.12+ (validated here with 24). `npm ci`; `npm run dev`; `npm run build`; 
 Keep all data on-device. No paid services, telemetry, model downloads, deployment, or remote inference by default. Never use eval, Function or raw HTML to execute proposals. All proposals need strict validation, a preview, explicit approval, and a transaction with stale-revision rejection. Imports must not silently reset data. Preserve old exports; do not weaken tests to claim compatibility. UI success follows completed durable writes. Keep design-only and full restore distinct. Optional local AI and arbitrary modules remain deferred.
 
 Run relevant tests and build before committing stable progress. Record actual browser and manual-device coverage in `docs/test-matrix.md`. Follow `docs/roadmap.md` for remaining work; do not describe an incomplete first slice as a finished release.
+
+## Simulation continuation
+
+Read `docs/simulation-guide.md`, `docs/simulation-implementation.md` and the recorded acceptance results. The rule contracts are in `src/core/contracts.ts`; execution is pure and generic. Preserve the optional format-2 extension without defaults on old data. Never put economic-specific behavior in the engine. The handoff records user-reported success on six baseline physical-iPad checks; do not extend that claim to the new simulation UI. Browser suites cover both engines, with dedicated touch cases at 390/768/1024px. `scripts/verify-deployment.mjs` verifies the live source marker and simulation lifecycle; `scripts/publish-pages.sh` only publishes a clean already-merged main snapshot and never force-pushes.

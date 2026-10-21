@@ -42,7 +42,7 @@ export function PlanSamples({
               {c.records.length ? (
                 <dl>
                   {c.records.slice(0, 5).map((r) => {
-                    const result = evaluate(f.formula, c, r);
+                    const result = evaluate(f.formula, c, r, 0, after);
                     return (
                       <div key={r.id}>
                         <dt>{recordTitle(c, r)}</dt>

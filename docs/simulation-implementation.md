@@ -1,0 +1,22 @@
+# Deterministic simulation semantics
+
+The exploratory PR kernel has been replaced with runtime-validated generic rules and the shared Formula AST. This document records implemented contracts, not a production release claim; release results are tracked separately.
+
+- Snapshot `automation?: {version:1,rules:[...]}` is an additive format-2 extension. Old snapshots remain byte-equivalent when parsed/exported (apart from export timestamps/root revisions on approved import). Legacy date rules remain in `collection.rules`. Unknown keys/versions reject. New-extension backups require this release or newer; do not downgrade the app and overwrite backups.
+- Each version-1 rule has a collection, enabled flag, trigger, optional typed condition tree and 1–8 actions. Triggers are simulationStep, recordCreated, recordUpdated, or fieldChanged. Record events run once on explicit user edits; rule writes never emit more events. FieldChanged requires an existing record and a real field-value transition. Adding a rule never backfills old matches.
+- Conditions support compatible field comparisons (numeric, select/text, boolean, date, relation/null), numeric expression comparisons and bounded AND/OR trees. Ordered null comparisons are false; invalid types reject before execution.
+- Actions assign numeric expressions, increment/decrement, assign compatible literal values, or transition select states from an explicit allowed source set. Computed/relation writes and legacy-managed date writes reject. Increment/decrement of missing numeric data fails rather than inventing zero.
+- All reads in a simulation step are frozen at its start, including aggregates and computed dependencies. Writes publish together only after every action succeeds. Rules, records and action targets execute in lexical ID order. Two attempted writes to one target reject, even if an assignment is a no-op; a transition whose source state is ineligible makes no write reservation.
+- Aggregate sum/count can read any collection and optionally filter by a typed literal, same-record stored field, or relation to the source record ID. Sum skips missing/null numeric inputs, empty sum/count is zero, and arithmetic errors fail the entire preview. Referenced computed fields participate in cross-collection cycle/unit validation.
+- No simulation clock, random source, asynchronous loop, network access or generated execution exists. Date actions are explicit calendar literals. Legacy local-date capture freezes its date at the user's edit preview.
+- Limits: 100 steps, 50 rules, 8 actions/rule, condition depth 6 / 64 nodes, expression depth 12 / 100 expanded validation nodes, 200,000 shared execution work units, 20,000 actual changes and 5 MB combined snapshot/diff output. Aggregate scans, conditions, formulas, record visits and step publication accounting consume one invocation-wide budget. Intermediate snapshots are discarded after step publication; only bounded diffs and step summaries are retained. Budget failures leave inputs and persistence unchanged.
+
+## Generic economic example
+
+`src/examples/economy.ts` supplies Companies and linked Expenses using ordinary schemas. Expenses is a computed related sum. Cash increases by Revenue − Expenses only while state is Active and cash > 0. A separate threshold transition marks an Active company Bankrupt when start-of-step cash <= 0. No rule is economic-specific inside the engine.
+
+Company A starts with cash 10, revenue 4 and expenses 7; Company B starts at 8, revenue 5 and expenses 3. Cash after 1/2/5/100 steps is A: 7/4/−2/−2; B: 10/12/18/208. A crosses zero at step 4 and changes state at step 5. These are deterministic fixture results, not forecasts or optimization.
+
+## Workbench resource bounds
+
+Aggregate memoization is scoped to one frozen snapshot and typed filter value, capped at 1 MB and invalidated at each step boundary. It never crosses a changed snapshot. The workbench renders 100 records per page and uses a shared view-evaluation budget; an over-budget query reports that it did not complete and leaves stored data untouched. Computed numeric sorting uses numeric values rather than localized display strings. Previews show up to 150 detailed changes and offer a complete JSON preview download before approval.

@@ -28,3 +28,9 @@ No inference model, external provider, WebGPU benchmark, custom-code module or n
 2. Expand from the six passing public-preview Chromium/WebKit smoke checks to the full browser suite on WebKit and a physical iPad; exercise storage failures, orientation, VoiceOver, offline reload and export/import.
 3. Add history compaction and more recovery tests before increasing document limits.
 4. Expand supported behaviors incrementally with typed contracts and end-to-end acceptance tests; add merge only with explicit conflict handling.
+
+## Deterministic simulation increment
+
+The handoff's M1–M4 are implemented on PR #1: runtime-validated version-1 rules, the extended shared AST, bounded frozen-step execution, generic event triggers/state transitions, correlated sum/count, revision-bound preview/approval/commit, and touch forms. M5 adds regression/upgrade/resource-bound cases, both-engine CI, source-checked live smoke tests and guarded Pages publication. Release gates and exact outcomes are recorded in the acceptance report, not inferred from compilation.
+
+Remaining product work includes genuine v8 migration fixtures, physical-iPad confirmation of the new UI, indexed large-query/history compaction, richer aggregates and conflict-aware branch merging. No AI or arbitrary code execution belongs in this increment.
