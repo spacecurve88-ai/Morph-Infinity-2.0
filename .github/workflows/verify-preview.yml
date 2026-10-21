@@ -1,0 +1,34 @@
+name: Verify public preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/verify-deployment.mjs
+      - .github/workflows/verify-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Test the deployed HTTPS site on mobile and tablet viewports
+        run: node scripts/verify-deployment.mjs
+      - name: Save screenshots and verification results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-preview-verification
+          path: test-results/deployment/
+          retention-days: 7

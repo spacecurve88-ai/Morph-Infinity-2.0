@@ -47,7 +47,7 @@ Production builds cache app assets for offline use after the first successful on
 
 ## Build and hosting
 
-`npm run build` creates `dist/`, a static application suitable for HTTPS static hosting such as Cloudflare Pages or Netlify under their current free-tier limits. Use build command `npm run build` and output directory `dist`; serve fallback routes to `index.html`. No deployment has been performed. Root-path hosting is the tested default; subpath hosting needs Vite base and PWA path configuration. A Vite build cannot be deployed unchanged inside Hatchable.
+`npm run build` creates `dist/`, a static application suitable for HTTPS static hosting such as Cloudflare Pages or Netlify under their current free-tier limits. Use build command `npm run build` and output directory `dist`; serve fallback routes to `index.html`. The independent [public HTTPS preview](https://spacecurve88-ai.github.io/Morph-Infinity-2.0/) is deployed on GitHub Pages; see [deployment details and verification](docs/deployment.md). For this GitHub Pages project URL, build with `npm run build -- --base=/Morph-Infinity-2.0/` so assets and the service worker use the repository path. Plain `npm run build` targets root-path hosting. A Vite build cannot be deployed unchanged inside Hatchable.
 
 ## Project documents
 
