@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { applicationsSchema } from "../application/contracts";
 
 import {
   key,
@@ -88,6 +89,7 @@ export const snapshotSchema = z
   .object({
     collections: z.array(collectionSchema).max(30),
     automation: automationSchema.optional(),
+    applications: applicationsSchema.optional(),
   })
   .strict();
 export type Snapshot = z.infer<typeof snapshotSchema>;

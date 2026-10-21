@@ -1,7 +1,7 @@
-name: Simulation acceptance gates
+name: Morph acceptance gates
 on:
   push:
-    branches: [feature/deterministic-simulation-core]
+    branches: [feature/deterministic-simulation-core, feature/visual-application-builder]
   pull_request:
     branches: [main]
   workflow_dispatch:

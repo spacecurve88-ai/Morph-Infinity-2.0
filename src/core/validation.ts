@@ -1,6 +1,7 @@
 import { boundedInput, documentSchema, snapshotSchema, unique } from "./model";
 import type { Document, Snapshot } from "./model";
 import { validateFormula } from "./formula";
+import { validateApplication } from "../application/validation";
 import { validateRuleset } from "./rule-validation";
 
 export function validateSnapshot(input: unknown): Snapshot {
@@ -76,6 +77,10 @@ export function validateSnapshot(input: unknown): Snapshot {
       }
   }
   if (snapshot.automation) validateRuleset(snapshot, snapshot.automation);
+  if (snapshot.applications) {
+    unique(snapshot.applications.apps, "application");
+    for (const app of snapshot.applications.apps) validateApplication(app);
+  }
   return snapshot;
 }
 export function validateDocument(input: unknown): Document {

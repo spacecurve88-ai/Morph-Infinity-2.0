@@ -1,0 +1,3 @@
+Morph users can compose interactive multi-page applications from a controlled set of declarative components, typed data bindings and actions, switch between Build and Run modes, and save designs through the existing preview/approval/history workflow. No application-specific runtime or executable user code is introduced.
+
+The implementation is incremental on this branch. Merge is gated on the complete unit/build/format and Chromium/WebKit suites, including economic, project and resource workflows, compatibility/recovery tests and touch layouts. After merge the repository-subpath Pages build is published and verified against its exact source marker. See docs/visual-builder-plan.md and the acceptance matrix for architecture, budgets and actual coverage.
