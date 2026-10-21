@@ -17,7 +17,14 @@ export const dimensionKey = (d: Dimensions) =>
     ),
   );
 const dimensions = (unit: string) => (unit === "number" ? {} : { [unit]: 1 });
-export type WorkBudget = { remaining: number };
+export type WorkBudget = {
+  remaining: number;
+  aggregateCache?: {
+    snapshot: Snapshot;
+    values: Map<string, ComputedValue>;
+    bytes: number;
+  };
+};
 export const workBudget = (remaining = 200000): WorkBudget => ({ remaining });
 export function spend(budget: WorkBudget, amount = 1): void {
   if ((budget.remaining -= amount) < 0)
@@ -183,6 +190,20 @@ function calculate(
   if (formula.kind === "number") return { value: formula.value };
   if (formula.kind === "aggregate") {
     const other = aggregateCollection(snapshot, formula.collectionId);
+    if (budget.aggregateCache?.snapshot !== snapshot)
+      budget.aggregateCache = { snapshot, values: new Map(), bytes: 0 };
+    const cache = budget.aggregateCache!;
+    const filter = formula.where;
+    const expected = filter
+      ? "equals" in filter
+        ? filter.equals
+        : "sourceRecordId" in filter
+          ? r.id
+          : (r.values[filter.sourceFieldId] ?? null)
+      : null;
+    const key = JSON.stringify([formula, expected]);
+    const cached = cache.values.get(key);
+    if (cached) return cached;
     let value = 0;
     for (const item of [...other.records].sort((a, b) =>
       a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
@@ -217,7 +238,12 @@ function calculate(
       if (!Number.isFinite(value))
         throw new Error("Result exceeds numeric range");
     }
-    return { value };
+    const result = { value };
+    if (cache.bytes + key.length * 2 + 32 <= 1024 * 1024) {
+      cache.values.set(key, result);
+      cache.bytes += key.length * 2 + 32;
+    }
+    return result;
   }
   if (formula.kind === "field") {
     const f = c.fields.find((f) => f.id === formula.fieldId);

@@ -168,3 +168,35 @@ describe("execution limits, upgrade evidence and adversarial boundaries", () => 
     }
   });
 });
+
+it("invalidates aggregate caches at each frozen step boundary", () => {
+  const s = counter(2);
+  s.collections[0].fields.push({
+    id: "total",
+    name: "Total",
+    type: "number",
+    unit: "number",
+  });
+  s.automation!.rules.push({
+    ...s.automation!.rules[0],
+    id: "total",
+    name: "Remember frozen total",
+    actions: [
+      {
+        kind: "setNumber",
+        fieldId: "total",
+        value: {
+          kind: "aggregate",
+          op: "sum",
+          collectionId: "counter",
+          fieldId: "n",
+        },
+      },
+    ],
+  });
+  const result = previewSimulation(s, s.automation, 3);
+  expect(result.snapshot.collections[0].records[0].values).toMatchObject({
+    n: 4,
+    total: 6,
+  });
+});

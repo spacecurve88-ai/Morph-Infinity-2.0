@@ -1803,3 +1803,22 @@ th {
     pointer-events: auto;
   }
 }
+.record-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 15px 22px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+.record-pagination > span {
+  margin-right: auto;
+}
+.record-pagination button {
+  font-size: 11px;
+  min-height: 44px;
+}
+.check-label {
+  min-height: 44px;
+}

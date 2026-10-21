@@ -210,6 +210,7 @@ test("cross-collection computed aggregate is user-operable through the field for
 test("rules can be edited, disabled and removed; conflicts and no-op simulations cannot save", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await example(page);
   const list = page.locator(".rule-list");
   await list
@@ -222,6 +223,11 @@ test("rules can be edited, disabled and removed; conflicts and no-op simulations
     .fill(
       "A long readable generic operating rule with a carefully explained condition and numeric action",
     );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page.getByRole("button", { name: "Preview rule", exact: true }).click();
   await expect(
     page.getByText("Rule sample only.", { exact: false }),
@@ -361,4 +367,34 @@ test("simulation approval rejects stale tabs and quota failures without partial 
   await expect(page.getByRole("alert")).toContainText("Storage quota exceeded");
   await page.reload();
   await expect(row(page).locator("td").nth(1)).toHaveText("7");
+});
+
+test("pre-extension imports keep records accessible through bounded pagination and filtering", async ({
+  page,
+}) => {
+  await workspace(page);
+  const backup = JSON.parse(
+    await readFile("tests/fixtures/native-v2.json", "utf8"),
+  );
+  backup.document.workspaces[0].commits[0].snapshot.collections[0].records =
+    Array.from({ length: 101 }, (_, i) => ({
+      id: `native-${i}`,
+      values: { title: `Record ${String(i).padStart(3, "0")}` },
+    }));
+  await page.getByRole("button", { name: "Backups & recovery" }).click();
+  await page.getByLabel("Choose backup (maximum 5 MB)").setInputFiles({
+    name: "old-native.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(backup)),
+  });
+  await page
+    .getByRole("button", { name: "Approve backup replacement" })
+    .click();
+  await expect(page.locator("tbody tr")).toHaveCount(100);
+  await page.getByRole("button", { name: "Next records" }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator("tbody")).toContainText("Record 100");
+  await page.getByLabel("Filter records", { exact: true }).fill("Record 005");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator("tbody")).toContainText("Record 005");
 });

@@ -54,6 +54,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          include-hidden-files: true
           name: simulation-acceptance-results
           path: |
             test-results/

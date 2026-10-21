@@ -16,3 +16,7 @@ The exploratory PR kernel has been replaced with runtime-validated generic rules
 `src/examples/economy.ts` supplies Companies and linked Expenses using ordinary schemas. Expenses is a computed related sum. Cash increases by Revenue − Expenses only while state is Active and cash > 0. A separate threshold transition marks an Active company Bankrupt when start-of-step cash <= 0. No rule is economic-specific inside the engine.
 
 Company A starts with cash 10, revenue 4 and expenses 7; Company B starts at 8, revenue 5 and expenses 3. Cash after 1/2/5/100 steps is A: 7/4/−2/−2; B: 10/12/18/208. A crosses zero at step 4 and changes state at step 5. These are deterministic fixture results, not forecasts or optimization.
+
+## Workbench resource bounds
+
+Aggregate memoization is scoped to one frozen snapshot and typed filter value, capped at 1 MB and invalidated at each step boundary. It never crosses a changed snapshot. The workbench renders 100 records per page and uses a shared view-evaluation budget; an over-budget query reports that it did not complete and leaves stored data untouched. Computed numeric sorting uses numeric values rather than localized display strings. Previews show up to 150 detailed changes and offer a complete JSON preview download before approval.

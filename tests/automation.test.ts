@@ -190,6 +190,14 @@ describe("pure deterministic simulations", () => {
       id: `r${i}`,
       values: { n: 1 },
     }));
+    large.collections[0].fields.push({
+      id: "owner",
+      name: "Owner",
+      type: "relation",
+      targetCollectionId: "items",
+    });
+    for (const record of large.collections[0].records)
+      record.values.owner = record.id;
     large.automation!.rules[0].actions = [
       {
         kind: "setNumber",
@@ -199,6 +207,7 @@ describe("pure deterministic simulations", () => {
           op: "sum",
           collectionId: "items",
           fieldId: "n",
+          where: { fieldId: "owner", sourceRecordId: true },
         },
       },
     ];

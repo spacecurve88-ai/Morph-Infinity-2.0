@@ -1,7 +1,8 @@
 import type { Collection, DataRecord, Field, Snapshot } from "../core/model";
+import type { WorkBudget } from "../core/formula";
 import { ruleSummary } from "./rule-text";
 import { displayValue } from "../core/engine";
-import { evaluate, formulaText } from "../core/formula";
+import { evaluate, formulaText, spend } from "../core/formula";
 
 export function recordTitle(c: Collection, r: DataRecord) {
   return String(
@@ -14,9 +15,11 @@ export function valueText(
   c: Collection,
   r: DataRecord,
   snapshot: Snapshot,
-) {
+  budget?: WorkBudget,
+): { text: string; reason?: string; numeric?: number | null } {
+  if (budget) spend(budget);
   if (f.type === "computed") {
-    const result = evaluate(f.formula, c, r, 0, snapshot);
+    const result = evaluate(f.formula, c, r, 0, snapshot, budget);
     return {
       text:
         result.value === null
@@ -25,12 +28,14 @@ export function valueText(
               maximumFractionDigits: 3,
             }).format(result.value),
       reason: result.reason,
+      numeric: result.value,
     };
   }
   if (f.type === "relation") {
     const target = snapshot.collections.find(
       (t) => t.id === f.targetCollectionId,
     );
+    if (budget) spend(budget, target?.records.length ?? 0);
     const record = target?.records.find((t) => t.id === r.values[f.id]);
     return { text: target && record ? recordTitle(target, record) : "—" };
   }

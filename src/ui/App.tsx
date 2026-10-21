@@ -4,6 +4,7 @@ import { currentSnapshot } from "../core/model";
 import type { Commit, DataRecord, Document, Snapshot } from "../core/model";
 import {
   createWorkspace,
+  displayValue,
   deleteRecord,
   forkBranch,
   localDate,
@@ -12,7 +13,7 @@ import {
   switchBranch,
 } from "../core/engine";
 import type { FeaturePlan } from "../core/engine";
-import { evaluate } from "../core/formula";
+import { workBudget } from "../core/formula";
 import { basePlan, propose, template } from "../planner/parse";
 import {
   exportBackup,
@@ -86,6 +87,7 @@ export function App() {
   const [view, setView] = useState<"table" | "cards">("table");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("");
+  const [recordPage, setRecordPage] = useState(0);
   const [notice, setNotice] = useState("");
   const [navOpen, setNavOpen] = useState(false);
   const [stale, setStale] = useState(false);
@@ -101,6 +103,7 @@ export function App() {
   const latestRevision = useRef(doc?.revision);
   latestRevision.current = doc?.revision;
   const previewState = usePlanPreview(doc, plan);
+  useEffect(() => setRecordPage(0), [c?.id, search, sort, w?.activeBranchId]);
 
   useEffect(() => {
     let disposed = false;
@@ -301,32 +304,80 @@ export function App() {
       </main>
     );
 
-  const records = c
-    ? c.records.filter((r) =>
-        c.fields.some((f) =>
-          valueText(f, c, r, snapshot)
-            .text.toLowerCase()
-            .includes(search.toLowerCase()),
-        ),
-      )
-    : [];
-  const sortField = c?.fields.find((f) => f.id === sort);
-  if (c && sortField)
-    records.sort((a, b) => {
-      const rawA =
-        sortField.type === "computed"
-          ? evaluate(sortField.formula, c, a, 0, snapshot).value
-          : a.values[sortField.id];
-      const rawB =
-        sortField.type === "computed"
-          ? evaluate(sortField.formula, c, b, 0, snapshot).value
-          : b.values[sortField.id];
-      if (rawA == null) return rawB == null ? 0 : 1;
-      if (rawB == null) return -1;
-      return typeof rawA === "number" && typeof rawB === "number"
-        ? rawA - rawB
-        : String(rawA).localeCompare(String(rawB));
-    });
+  const cellCache = new Map<string, ReturnType<typeof valueText>>(),
+    displayBudget = workBudget();
+  let queryError = "",
+    totalMatching = 0;
+  const valueFor = (
+    f: NonNullable<typeof c>["fields"][number],
+    r: DataRecord,
+  ): ReturnType<typeof valueText> => {
+    const key = JSON.stringify([f.id, r.id]);
+    const cached = cellCache.get(key);
+    if (cached) return cached;
+    if (queryError)
+      return {
+        text:
+          f.type === "computed" || f.type === "relation"
+            ? "—"
+            : displayValue(f, r),
+        reason:
+          f.type === "computed" || f.type === "relation"
+            ? "Calculation limit reached"
+            : undefined,
+      };
+    const result = valueText(f, c!, r, snapshot, displayBudget);
+    if (result.reason?.includes("work budget"))
+      throw new Error(
+        "This view exceeds the calculation budget. Clear the filter/sort or reduce the queried data. Showing unfiltered records; derived values may be unavailable.",
+      );
+    cellCache.set(key, result);
+    return result;
+  };
+  let records: DataRecord[] = [],
+    visiblePage = recordPage;
+  try {
+    const filtered = c
+      ? c.records.filter(
+          (r) =>
+            !search ||
+            c.fields.some((f) =>
+              valueFor(f, r).text.toLowerCase().includes(search.toLowerCase()),
+            ),
+        )
+      : [];
+    const sortField = c?.fields.find((f) => f.id === sort);
+    if (c && sortField)
+      filtered.sort((a, b) => {
+        const av =
+            sortField.type === "computed"
+              ? (valueFor(sortField, a).numeric ?? null)
+              : a.values[sortField.id],
+          bv =
+            sortField.type === "computed"
+              ? (valueFor(sortField, b).numeric ?? null)
+              : b.values[sortField.id];
+        if (av == null || av === "—") return bv == null || bv === "—" ? 0 : 1;
+        if (bv == null || bv === "—") return -1;
+
+        return typeof av === "number" && typeof bv === "number"
+          ? av - bv
+          : String(av).localeCompare(String(bv));
+      });
+    totalMatching = filtered.length;
+    visiblePage = Math.min(
+      recordPage,
+      Math.max(0, Math.ceil(totalMatching / 100) - 1),
+    );
+    records = filtered.slice(visiblePage * 100, (visiblePage + 1) * 100);
+    if (c) for (const r of records) for (const f of c.fields) valueFor(f, r);
+  } catch (e) {
+    queryError = explain(e);
+    totalMatching = c?.records.length ?? 0;
+    visiblePage = 0;
+    records = c?.records.slice(0, 100) ?? [];
+    cellCache.clear();
+  }
   const preview = previewState.result?.snapshot;
   const selectedCommit = w?.commits.find((commit) => commit.id === compareId);
   function changes(target: Snapshot) {
@@ -404,7 +455,7 @@ export function App() {
           <button
             className="icon-button"
             aria-label="New collection"
-            disabled={!w}
+            disabled={!w || !!modal || !!plan || busy || applying}
             onClick={() => openModal("collection")}
           >
             ＋
@@ -437,7 +488,7 @@ export function App() {
           </button>
           <button
             className="nav-button"
-            disabled={!w}
+            disabled={!w || !!modal || !!plan || busy || applying}
             onClick={() => {
               setCompareId("");
               openModal("history");
@@ -555,7 +606,7 @@ export function App() {
                 id="request"
                 value={request}
                 maxLength={600}
-                disabled={!w}
+                disabled={!w || !!modal || !!plan || busy || applying}
                 onChange={(e) => setRequest(e.target.value)}
                 placeholder={
                   w
@@ -758,6 +809,11 @@ export function App() {
                   ◷ {w.commits.length} revisions
                 </button>
               </div>
+              {queryError && (
+                <p className="warning" role="alert">
+                  {queryError}
+                </p>
+              )}
               {!c.records.length ? (
                 <Empty>
                   <span className="empty-icon">▤</span>
@@ -814,7 +870,7 @@ export function App() {
                       {records.map((r) => (
                         <tr key={r.id}>
                           {c.fields.map((f) => {
-                            const value = valueText(f, c, r, snapshot);
+                            const value = valueFor(f, r);
                             return (
                               <td
                                 key={f.id}
@@ -872,7 +928,7 @@ export function App() {
                         {c.fields
                           .filter((f) => f.id !== c.fields[0].id)
                           .map((f) => {
-                            const value = valueText(f, c, r, snapshot);
+                            const value = valueFor(f, r);
                             return (
                               <div key={f.id}>
                                 <dt>{f.name}</dt>
@@ -891,6 +947,31 @@ export function App() {
                       </span>
                     </button>
                   ))}
+                </div>
+              )}
+              {totalMatching > 100 && (
+                <div className="record-pagination">
+                  <span>
+                    Showing {visiblePage * 100 + 1}–
+                    {Math.min((visiblePage + 1) * 100, totalMatching)} of{" "}
+                    {totalMatching} records
+                  </span>
+                  <button
+                    className="secondary"
+                    disabled={visiblePage === 0 || !!queryError}
+                    onClick={() => setRecordPage(visiblePage - 1)}
+                  >
+                    Previous records
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={
+                      (visiblePage + 1) * 100 >= totalMatching || !!queryError
+                    }
+                    onClick={() => setRecordPage(visiblePage + 1)}
+                  >
+                    Next records
+                  </button>
                 </div>
               )}
               <div className="canvas-footer">
@@ -961,6 +1042,28 @@ export function App() {
           {preview && <PlanSamples before={snapshot} after={preview} />}
           {previewState.result && (
             <AutomationPreview preview={previewState.result} />
+          )}
+          {!!previewState.result?.simulation && (
+            <button
+              className="secondary"
+              onClick={() =>
+                download(
+                  JSON.stringify(
+                    {
+                      summary: plan.summary,
+                      steps: previewState.result!.simulation!.steps,
+                      summaries: previewState.result!.simulation!.summaries,
+                      changes: previewState.result!.changes,
+                    },
+                    null,
+                    2,
+                  ),
+                  "morph-simulation-preview.json",
+                )
+              }
+            >
+              Download full simulation preview
+            </button>
           )}
           {previewState.result?.sample && (
             <AutomationPreview

@@ -36,3 +36,9 @@ The local deployment preparation check passed all three viewports in Chromium ag
 Open the HTTPS URL in Safari once online. Create a workspace, approve a template, save a record, and reload to check persistence. Use Share → Add to Home Screen if offered. Export backups regularly using Backups & recovery: Safari may clear or evict browser storage, and private browsing has different retention behavior. Do not import original v8 backups yet; native format-2 backups are supported, while genuine v8 migration remains unverified.
 
 WebKit automation approximates the engine and viewport, not real iPad Safari hardware, installation behavior, OS storage policy, memory pressure, VoiceOver or WebGPU. AI and model downloads remain disabled. Keep the original deployment and its backups until a tested migration is available.
+
+## Simulation release procedure
+
+Only after PR #1's acceptance workflow passes, merge into main and run `bash scripts/publish-pages.sh` from that clean merged checkout. The helper checks remote main equality and the existing Pages ownership marker, builds the repository subpath, and appends a normal artifact commit to `gh-pages`. It never force-pushes or touches the Hatchable original. Concurrent remote changes cause a refusal rather than overwrite.
+
+The public verification workflow now waits for `deployment.json.sourceCommit` to equal its triggering main SHA. It then checks reading compatibility plus economic simulation preview/cancel/apply, frozen-step results, branch isolation, full rollback, reload and offline loading in Chromium and WebKit at three touch sizes. This prevents a cached older deployment from being mistaken for a verified new release.
