@@ -1,0 +1,44 @@
+{
+  "app": "Morph Infinity",
+  "exportedAt": "2026-10-20T00:00:00.000Z",
+  "document": {
+    "format": 2,
+    "revision": "fixture-revision",
+    "workspaces": [
+      {
+        "id": "workspace-books",
+        "name": "Fixture library",
+        "activeBranchId": "branch-main",
+        "branches": [
+          { "id": "branch-main", "name": "main", "head": "commit-books" }
+        ],
+        "commits": [
+          {
+            "id": "commit-books",
+            "parentId": null,
+            "at": "2026-10-20T00:00:00.000Z",
+            "message": "Synthetic native fixture",
+            "snapshot": {
+              "collections": [
+                {
+                  "id": "collection-books",
+                  "name": "Books",
+                  "rules": [],
+                  "fields": [
+                    { "id": "title", "name": "Title", "type": "text" }
+                  ],
+                  "records": [
+                    {
+                      "id": "record-one",
+                      "values": { "title": "A synthetic book" }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
