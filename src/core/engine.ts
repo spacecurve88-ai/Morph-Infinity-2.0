@@ -89,6 +89,8 @@ export type PlanPreview = {
   snapshot: Snapshot;
   changes: Change[];
   simulation?: SimulationResult;
+  sample?: SimulationResult;
+  sampleError?: string;
 };
 export function previewPlanDetails(
   document: Document,
@@ -170,7 +172,29 @@ export function previewPlanDetails(
       }
     }
   }
-  return { snapshot: validateSnapshot(next), changes, simulation };
+  const result: PlanPreview = {
+    snapshot: validateSnapshot(next),
+    changes,
+    simulation,
+  };
+  if (
+    plan.operations.some(
+      (o) =>
+        o.type === "upsertRule" && o.rule.trigger.kind === "simulationStep",
+    )
+  ) {
+    try {
+      result.sample = previewSimulation(
+        next,
+        next.automation ?? { version: 1, rules: [] },
+        1,
+      );
+    } catch (error) {
+      result.sampleError =
+        error instanceof Error ? error.message : "Sample failed";
+    }
+  }
+  return result;
 }
 export function previewPlan(document: Document, input: unknown): Snapshot {
   return previewPlanDetails(document, input).snapshot;

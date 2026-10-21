@@ -1,0 +1,49 @@
+name: Simulation acceptance gates
+on:
+  push:
+    branches: [feature/deterministic-simulation-core]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run format:check
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - name: Record exact acceptance counts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,os
+          lines=['# Simulation acceptance results','']
+          for name in ['unit','e2e']:
+            path=pathlib.Path('.reports')/(name+'.json')
+            if not path.exists():
+              lines.append(name+': report unavailable')
+              continue
+            d=json.loads(path.read_text())
+            counts={'passed':d.get('numPassedTests'),'failed':d.get('numFailedTests'),'skipped':d.get('numPendingTests')} if name=='unit' else d.get('stats',{})
+            lines.append(name+': '+json.dumps(counts,sort_keys=True))
+          pathlib.Path(os.environ['GITHUB_STEP_SUMMARY']).write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulation-acceptance-results
+          path: |
+            test-results/
+            .reports/
+          retention-days: 7

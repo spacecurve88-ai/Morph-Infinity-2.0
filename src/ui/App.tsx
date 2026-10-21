@@ -3,11 +3,10 @@ import type { ReactNode } from "react";
 import { currentSnapshot } from "../core/model";
 import type { Commit, DataRecord, Document, Snapshot } from "../core/model";
 import {
-  applyPlan,
   createWorkspace,
   deleteRecord,
   forkBranch,
-  previewPlan,
+  localDate,
   restoreCommit,
   saveRecord,
   switchBranch,
@@ -23,6 +22,8 @@ import {
 } from "../storage/repository";
 import { Dialog } from "./Dialog";
 import { ArrowIcon } from "./ArrowIcon";
+import { SimulationWorkbench, AutomationPreview } from "./SimulationWorkbench";
+import { planTask, usePlanPreview } from "./plan-preview";
 import { FieldForm, NameForm, RecordForm } from "./forms";
 import { Diff, MonthlyChart, PlanSamples } from "./previews";
 import { compareSnapshots, recordTitle, valueText } from "./presentation";
@@ -73,6 +74,7 @@ export function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [applying, setApplying] = useState(false);
   const lock = useRef(false);
   const [workspaceId, setWorkspaceId] = useState("");
   const [collectionId, setCollectionId] = useState("");
@@ -97,6 +99,7 @@ export function App() {
   const activeBranch = w?.branches.find((b) => b.id === w.activeBranchId);
   const latestRevision = useRef(doc?.revision);
   latestRevision.current = doc?.revision;
+  const previewState = usePlanPreview(doc, plan);
 
   useEffect(() => {
     let disposed = false;
@@ -323,14 +326,7 @@ export function App() {
         ? rawA - rawB
         : String(rawA).localeCompare(String(rawB));
     });
-  let preview: Snapshot | undefined;
-  if (plan) {
-    try {
-      preview = previewPlan(doc, plan);
-    } catch {
-      /* Approval reruns validation and explains stale plans. */
-    }
-  }
+  const preview = previewState.result?.snapshot;
   const selectedCommit = w?.commits.find((commit) => commit.id === compareId);
   function changes(target: Snapshot) {
     return compareSnapshots(snapshot, target);
@@ -341,6 +337,19 @@ export function App() {
     } catch (e) {
       setError(explain(e));
       return Promise.resolve(false);
+    }
+  }
+  async function approveReviewedPlan() {
+    if (!doc || !plan || applying) return;
+    setApplying(true);
+    setError("");
+    try {
+      const next = await planTask<Document>(doc, plan, "apply").promise;
+      await persist(next, "Approved change saved locally.");
+    } catch (e) {
+      setError(explain(e));
+    } finally {
+      setApplying(false);
     }
   }
   return (
@@ -503,7 +512,7 @@ export function App() {
             </div>
             <span className="version-tag">EARLY BUILD · 0.1</span>
           </div>
-          <ErrorBox error={modal ? "" : error} />
+          <ErrorBox error={modal || plan ? "" : error} />
           {stale && (
             <div role="status" className="warning">
               Another tab has a newer revision.{" "}
@@ -577,6 +586,18 @@ export function App() {
               </div>
             )}
           </section>
+          {w && (
+            <SimulationWorkbench
+              document={doc}
+              w={w}
+              collectionId={c?.id}
+              onReview={(p) => {
+                setError("");
+                setNotice("");
+                setPlan(p);
+              }}
+            />
+          )}
           {!w ? (
             <section className="welcome">
               <div className="orb">∞</div>
@@ -892,41 +913,85 @@ export function App() {
           title="Review your change"
           wide
           onClose={() => {
+            if (applying) return;
             setPlan(undefined);
             setError("");
           }}
         >
-          <ErrorBox error={error} />
+          <ErrorBox error={error || previewState.error || ""} />
+          {previewState.running && (
+            <p role="status" className="preview-progress">
+              Calculating bounded preview… Cancel stops the calculation. No data
+              is being saved.
+            </p>
+          )}
+          {applying && (
+            <p role="status" className="preview-progress">
+              Rechecking the approved plan… Saving completes only after the
+              transaction succeeds.
+            </p>
+          )}
           <span className="eyebrow">PROPOSED CHANGE · NOT APPLIED</span>
           <h3 className="plan-title">{plan.summary}</h3>
           <ul className="diff-list">
             {preview ? (
               changes(preview).map((line, i) => <li key={i}>{line}</li>)
             ) : (
-              <li>This plan is stale. Cancel and preview a fresh change.</li>
+              <li>
+                {previewState.running
+                  ? "Preparing the before/after comparison…"
+                  : "Preview unavailable. Review the error above."}
+              </li>
             )}
           </ul>
           <p className="help">
-            Existing record values stay intact. Date rules apply to future
-            transitions. Computed fields recalculate from your saved values.
+            Only the reviewed changes are saved after approval. Rule definitions
+            do not backfill records. Simulations may change record values;
+            restore them from History when needed.
           </p>
           {preview && <PlanSamples before={snapshot} after={preview} />}
+          {previewState.result && (
+            <AutomationPreview preview={previewState.result} />
+          )}
+          {previewState.result?.sample && (
+            <AutomationPreview
+              sample
+              preview={{
+                snapshot: previewState.result.sample.snapshot,
+                changes: previewState.result.sample.changes,
+                simulation: previewState.result.sample,
+              }}
+            />
+          )}
+          {previewState.result?.sampleError && (
+            <p className="warning">
+              Sample could not run: {previewState.result.sampleError}. Only the
+              rule definition will be saved.
+            </p>
+          )}
           <details>
             <summary>Inspect typed plan</summary>
             <pre>{JSON.stringify(plan, null, 2)}</pre>
           </details>
           <div className="dialog-actions">
-            <button className="secondary" onClick={() => setPlan(undefined)}>
+            <button
+              className="secondary"
+              disabled={applying}
+              onClick={() => setPlan(undefined)}
+            >
               Cancel change
             </button>
             <button
-              disabled={busy || !preview}
-              onClick={() =>
-                void tryAction(
-                  () => applyPlan(doc, plan),
-                  "Change applied and saved locally.",
+              disabled={
+                busy ||
+                applying ||
+                !preview ||
+                !!(
+                  previewState.result?.simulation &&
+                  !previewState.result.changes.length
                 )
               }
+              onClick={() => void approveReviewedPlan()}
             >
               Approve & apply
             </button>
@@ -1014,6 +1079,33 @@ export function App() {
               record={editing}
               busy={busy}
               onSubmit={async (record) => {
+                if (
+                  snapshot.automation?.rules.some(
+                    (r) =>
+                      r.enabled &&
+                      r.trigger.kind !== "simulationStep" &&
+                      r.collectionId === c.id,
+                  )
+                ) {
+                  setModal(null);
+                  setError("");
+                  setPlan({
+                    version: 1,
+                    baseRevision: doc.revision,
+                    workspaceId: w.id,
+                    branchId: w.activeBranchId,
+                    summary: `Save record and preview rule effects in ${c.name}`,
+                    operations: [
+                      {
+                        type: "saveRecord",
+                        collectionId: c.id,
+                        record,
+                        date: localDate(),
+                      },
+                    ],
+                  });
+                  return;
+                }
                 if (
                   await tryAction(
                     () => saveRecord(doc, w.id, c.id, record),

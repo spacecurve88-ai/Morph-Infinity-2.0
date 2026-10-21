@@ -67,6 +67,11 @@ export function validateRule(snapshot: Snapshot, rule: AutomationRule): void {
     !c.fields.some((f) => f.id === trigger.fieldId && f.type !== "computed")
   )
     throw new Error("Field-change trigger requires a stored field.");
+  if (
+    trigger.kind === "fieldChanged" &&
+    c.rules.some((r) => r.setFieldId === trigger.fieldId)
+  )
+    throw new Error("Legacy managed dates cannot trigger further rule events.");
   if (rule.when) {
     conditionSchema.parse(rule.when);
     validateCondition(rule.when, c, snapshot);

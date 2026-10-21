@@ -134,6 +134,7 @@ function collectWrites(
   step: number,
   accept: (rule: AutomationRule, record: DataRecord) => boolean,
 ): Change[] {
+  let diffBytes = 0;
   const changes: Change[] = [],
     reserved = new Map<string, string>();
   for (const rule of order(rules)) {
@@ -156,8 +157,8 @@ function collectWrites(
           );
         reserved.set(key, rule.name);
         const before = record.values[action.fieldId] ?? null;
-        if (before !== after)
-          changes.push({
+        if (before !== after) {
+          const change = {
             step,
             ruleId: rule.id,
             collectionId: c.id,
@@ -165,7 +166,12 @@ function collectWrites(
             fieldId: action.fieldId,
             before,
             after,
-          });
+          };
+          diffBytes += size(change);
+          if (diffBytes > SIMULATION_LIMITS.bytes)
+            throw new Error("Simulation diff memory limit exceeded.");
+          changes.push(change);
+        }
         if (changes.length > SIMULATION_LIMITS.changes)
           throw new Error("Simulation change limit exceeded.");
       }
@@ -265,7 +271,9 @@ export function previewRecordRules(
   validateRuleset(s, rules);
   const changed =
     !previous ||
-    JSON.stringify(previous.values) !== JSON.stringify(record.values);
+    c.fields.some(
+      (f) => (previous.values[f.id] ?? null) !== (record.values[f.id] ?? null),
+    );
   const changes = collectWrites(s, rules.rules, workBudget(), 1, (rule, r) => {
     if (rule.collectionId !== collectionId || r.id !== recordId) return false;
     const trigger = rule.trigger;

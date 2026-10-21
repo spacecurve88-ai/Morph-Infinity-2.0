@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { uid } from "../core/model";
 import type { Collection, DataRecord, Field, Snapshot } from "../core/model";
+import { ExpressionEditor, initialExpression } from "./expression-editor";
 import { recordTitle } from "./presentation";
 
 export function NameForm({
@@ -53,12 +54,13 @@ export function FieldForm({
 }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<
-    "text" | "number" | "date" | "boolean" | "select" | "relation"
+    "text" | "number" | "date" | "boolean" | "select" | "relation" | "computed"
   >("text");
   const [unit, setUnit] = useState<"number" | "pages" | "minutes" | "money">(
     "number",
   );
   const [options, setOptions] = useState("");
+  const [formula, setFormula] = useState(initialExpression(collection));
   const [target, setTarget] = useState(
     snapshot.collections.find((c) => c.id !== collection.id)?.id ??
       collection.id,
@@ -67,24 +69,26 @@ export function FieldForm({
     e.preventDefault();
     const base = { id: uid(), name: name.trim() };
     onSubmit(
-      type === "number"
-        ? { ...base, type, unit }
-        : type === "select"
-          ? {
-              ...base,
-              type,
-              options: [
-                ...new Set(
-                  options
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                ),
-              ],
-            }
-          : type === "relation"
-            ? { ...base, type, targetCollectionId: target }
-            : { ...base, type },
+      type === "computed"
+        ? { ...base, type, formula }
+        : type === "number"
+          ? { ...base, type, unit }
+          : type === "select"
+            ? {
+                ...base,
+                type,
+                options: [
+                  ...new Set(
+                    options
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean),
+                  ),
+                ],
+              }
+            : type === "relation"
+              ? { ...base, type, targetCollectionId: target }
+              : { ...base, type },
     );
   }
   return (
@@ -111,8 +115,18 @@ export function FieldForm({
           <option value="boolean">Yes / No</option>
           <option value="select">Select</option>
           <option value="relation">Relation</option>
+          <option value="computed">Computed expression</option>
         </select>
       </label>
+      {type === "computed" && (
+        <ExpressionEditor
+          value={formula}
+          onChange={setFormula}
+          collection={collection}
+          snapshot={snapshot}
+          label="Computed expression"
+        />
+      )}
       {type === "number" && (
         <label>
           Unit
