@@ -29,7 +29,7 @@ To check another deployment explicitly:
 MORPH_PREVIEW_URL=https://your-preview.example/ node scripts/verify-deployment.mjs
 ```
 
-The local deployment preparation check passed all three viewports in Chromium against the exact Pages build, including retained records/calculated values and offline reload. Public-site CI results are recorded in `docs/test-matrix.md` after completion.
+The local deployment preparation check passed all three viewports in Chromium against the exact Pages build, including retained records/calculated values and offline reload. The [public-site CI run](https://github.com/spacecurve88-ai/Morph-Infinity-2.0/actions/runs/39534068233) completed successfully: all six Chromium/WebKit viewport combinations passed against the live URL. See `docs/test-matrix.md` for scope and limitations.
 
 ## Test on iPad
 

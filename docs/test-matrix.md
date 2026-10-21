@@ -11,7 +11,8 @@ Validated in this cloud machine with Node 24.19.0, npm 11.9.0 and system Chromiu
 | Development server | Passed | HTTP 200 and actual React first-load screen verified in isolated Chromium context |
 | `npm run format:check` | Passed | Source, tests and configuration match Prettier formatting |
 | `npm audit --omit=dev` | Passed | No production dependency advisories reported by registry |
-| WebKit browser installation | Blocked | HTTP 403 `Domain forbidden` from `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`; no WebKit tests ran |
+| WebKit installation in this cloud workspace | Blocked | HTTP 403 `Domain forbidden` from `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`; no WebKit tests ran |
+| Public HTTPS preview CI | 6 passed | Chromium and WebKit each passed 390×844, 768×1024 and 1024×768 against the live GitHub Pages URL |
 | Physical iPad / Safari / WebGPU | Unrun | Device unavailable; no compatibility or model-performance claim |
 | Genuine v8 migration | Unrun | Original source and real exports absent; synthetic envelope only establishes safe rejection |
 
@@ -51,4 +52,14 @@ Screenshots were inspected at desktop and narrow widths. Browser automation is n
 - Large record histories within documented limits and memory pressure.
 - No inference, model download or WebGPU benchmark is currently enabled.
 
-The complete product release gates are not met. In particular, real legacy migration, WebKit and iPad checks remain outstanding.
+## Public preview verification
+
+Live URL: https://spacecurve88-ai.github.io/Morph-Infinity-2.0/
+
+GitHub Pages deployment succeeded in [run 39533785549](https://github.com/spacecurve88-ai/Morph-Infinity-2.0/actions/runs/39533785549). The published files exactly match the locally tested `dist/` built with `npm run build -- --base=/Morph-Infinity-2.0/`.
+
+[Public-site browser verification run 39534068233](https://github.com/spacecurve88-ai/Morph-Infinity-2.0/actions/runs/39534068233) completed successfully. The `scripts/verify-deployment.mjs` check executed all six engine/viewport combinations: Chromium and WebKit at 390×844, 768×1024, and 1024×768 with touch emulation. Each required HTTP 200, application rendering, workspace/record creation, explicit computed-field approval, exact calculation value 3, records and calculations retained after reload, no page overflow, activated service worker, successful offline reload, and no uncaught JavaScript errors. Screenshots and structured results were uploaded as the workflow's `public-preview-verification` artifact (7-day retention).
+
+The cloud workspace itself still cannot directly fetch the GitHub Pages hostname under its currently applied network policy. Public URL verification therefore ran in the repository's standard GitHub-hosted CI, not through this workspace. No TLS verification was disabled.
+
+The complete product release gates are not met. Real legacy migration, the full browser suite on WebKit, and physical iPad checks remain outstanding. Successful automated WebKit smoke tests do not establish iPad hardware compatibility.

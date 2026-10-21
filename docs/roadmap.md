@@ -25,6 +25,6 @@ No inference model, external provider, WebGPU benchmark, custom-code module or n
 ## Next highest-value work
 
 1. Obtain a sanitized actual v8 backup and source; implement reversible migration against real fixtures, preserving unknown data rather than guessing nested schemas.
-2. Run the browser suite on WebKit and a physical iPad; exercise storage failures, orientation, VoiceOver, offline reload and export/import.
+2. Expand from the six passing public-preview Chromium/WebKit smoke checks to the full browser suite on WebKit and a physical iPad; exercise storage failures, orientation, VoiceOver, offline reload and export/import.
 3. Add history compaction and more recovery tests before increasing document limits.
 4. Expand supported behaviors incrementally with typed contracts and end-to-end acceptance tests; add merge only with explicit conflict handling.
